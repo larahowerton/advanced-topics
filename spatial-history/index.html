@@ -10,27 +10,30 @@
              programs way beyond our capacities to construct; but we can
              make use of them nonetheless -->
         <!-- jQuery is an important framework used by many web projects  -->
-        <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+        <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js"></script>
 
         <!-- markdown-it is our markdown parser, which translates markdown into HTML -->
         <script src="https://cdn.jsdelivr.net/npm/markdown-it@8.4.2/dist/markdown-it.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/markdown-it-attrs@2.3.2/markdown-it-attrs.browser.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/markdown-it-footnote@3.0.1/dist/markdown-it-footnote.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/markdown-it-emoji@1.4.0/dist/markdown-it-emoji.js"></script>
-        <!-- load google map API -->
-        <!-- consider adding your own API key if you want to keep using this -->
-        <!-- https://developers.google.com/maps/documentation/javascript/get-api-key -->
-        <!-- my key will *only* work on github.io and your local computer  -->
-        <!-- <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAJxAlu3l5sKbilIJst2_0RFF7ATv0jTuA"></script> -->
-
-
         
-        <!-- call all our CSS files: chota, site-wide mods, and page-specific mods -->
-       
+        <!-- call our CSS files: chota, site-wide mods, and page-specific mods -->
         <link rel="stylesheet" href="../css/chota.css" type="text/css" media="screen" />
         <link rel="stylesheet" href="../css/site-styles.css" type="text/css" media="screen" />
         <link rel="stylesheet" href="../css/map-styles.css" type="text/css" media="screen" />
         <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+
+        <!-- Leaflet Libraries! CSS first -->
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
+              integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+              crossorigin=""/>
+        <!-- Leaflet also requires JS -->
+        <!-- Must be loaded AFTER Leaflet's CSS -->
+        <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
+                integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
+                crossorigin=""></script>
+
     </head>
 
     <!-- note the 'onload' attribute here.
@@ -56,7 +59,7 @@
                 <!-- these buttons hide/show all the markers  -->
                 <!-- to hide/show blue or red markers instead, change my_markers below to blue_markers
                      to red_markers.  If you have defined your own color (or other) arrays, use those instead -->
-                <h1>Legend <button onclick="toggleMarkers(my_markers, my_map)" class="rounded" id="hide">Toggle markers</button> </h1>
+                <h1>Legend </h1>
                 <!-- this will be auto-populated with info from your marker array -->
                 <div id="map_legend"></div>
             </section>
@@ -70,33 +73,31 @@
             
         </footer> 
 
-        <!-- Switching to leaflet! CSS first -->
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
-              integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
-              crossorigin=""/>
-        <!-- Leaflet also requires JS -->
-        <!-- Make sure you put this AFTER Leaflet's CSS -->
-        <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
-                integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="
-                crossorigin=""></script>
 
         <!-- this line calls your custom js -->
         <script src="../js/maps-setup.js"></script>
         <script>
+         // we're going to load the md twice so let's abstract the logic here
+         // async function in theory should speed things up
+         // using .then promise syntax really simplifies the code -- sorry we
+         // haven't learned it in class!
+         const addMD = async function (url, selector, parser) {
+             return fetch(url)
+                 .then( response => response.text())
+                 .then( (response =>
+                     document.querySelector(selector).innerHTML += parser.render(response)))
+         }
          // we define the main actions of the script as a function which wil lbe run when the
          // page resources have been completely loaded.
          //window.
-         const initializePage = function() {
+         const initializePage = async function() {
              // instantiate the parser object and declare the
              // placeholder variable for the rendered content
              // while storing the original content so as not to lose it
              let md = window.markdownit('commonmark', {
                  html: true,
                  linkify: true}),
-                 renderedcontent = "",
-                 introContent = $("#intro").html(),
-                 mainContent = $("#maintext").html();
-
+                 renderedcontent = "";
              /* use footnote, attribute and emoji plugins */
              md.use(window.markdownItAttrs)
              md.use(window.markdownitFootnote)
@@ -105,19 +106,10 @@
              md.enable('table')
 
              //retrieve the markdown files, parse them,
-             // and use it to replace the contents of #intro and #maintext
-             // also load the google map
-             $.get("./intro.md", function (response) {
-                 let content = response,
-                     renderedcontent = md.render(content);
-                 console.log(typeof(response));
-                 $("#intro").html(introContent + renderedcontent);
-                 $.get("./index.md", function (response2) {
-                     let content = response2,
-                         renderedcontent2 = md.render(content);
-                     $("#maintext").html(mainContent + renderedcontent2);
-                 }, 'text')
-             }, 'text');
+             // and add to content of relevant sections
+             let intro = addMD('intro.md', '#intro', md);
+             let main = addMD('index.md', '#maintext', md);
+             // load the map
              initializeMap();
              
          };
